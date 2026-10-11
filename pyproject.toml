@@ -1,0 +1,6 @@
+[project]
+name = "pricehunter"
+version = "0.1.0"
+description = "paste a product link: H agents try promo codes in the cart and find it cheaper, new, at trusted shops"
+requires-python = ">=3.11"
+dependencies = ["hai-agents", "fastapi", "uvicorn[standard]", "httpx"]

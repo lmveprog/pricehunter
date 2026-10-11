@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Price Hunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000; --panel:#0b0b0c; --line:#1d1d20; --line2:#2a2a2e;
+  --fg:#f4f4f5; --mute:#8b8b93; --dim:#55555c;
+  --win:#3ddc84; --win-soft:rgba(61,220,132,.12);
+  --warn:#f5a524; --bad:#ef4444;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--fg);font:400 15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+a{color:inherit}
+.wrap{max-width:1320px;margin:0 auto;padding:0 28px}
+
+/* top */
+header{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:500;letter-spacing:-.01em}
+.brand i{width:18px;height:18px;border-radius:50%;background:var(--fg);display:inline-block;position:relative}
+.brand i::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--bg)}
+.by{color:var(--mute);font-size:13px}
+.by b{color:var(--fg);font-weight:500}
+
+/* hero */
+#hero{min-height:calc(100vh - 64px);display:flex;flex-direction:column;justify-content:center;padding-bottom:10vh}
+#hero h1{font-weight:500;font-size:clamp(40px,6vw,76px);line-height:1.02;letter-spacing:-.035em;max-width:900px}
+#hero h1 span{color:var(--mute)}
+#hero p.lead{color:var(--mute);margin-top:18px;font-size:17px;max-width:560px;font-weight:300}
+form{margin-top:44px;display:flex;gap:10px;max-width:760px}
+.field{flex:1;display:flex;align-items:center;gap:12px;border:1px solid var(--line2);border-radius:14px;padding:0 18px;background:var(--panel);transition:border-color .2s}
+.field:focus-within{border-color:#4a4a50}
+.field input{flex:1;background:none;border:0;outline:0;height:58px;font-size:18px}
+.field input::placeholder{color:var(--dim)}
+.go{height:60px;padding:0 26px;border-radius:14px;border:0;background:var(--fg);color:#000;font-weight:500;cursor:pointer;white-space:nowrap;transition:transform .15s}
+.go:hover{transform:translateY(-1px)}
+.go:disabled{opacity:.4;cursor:default;transform:none}
+.examples{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;color:var(--dim);font-size:13px;align-items:center}
+.chip{border:1px solid var(--line2);border-radius:99px;padding:5px 12px;font-size:13px;color:var(--mute);background:none;cursor:pointer;transition:all .15s}
+.chip:hover{color:var(--fg);border-color:#45454b}
+.chip.on{color:var(--fg);border-color:#45454b;background:#121214}
+.chip.off{color:var(--dim);text-decoration:line-through}
+.shops{margin-top:28px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.shops .lbl{color:var(--dim);font-size:13px;margin-right:4px}
+
+/* hunt */
+#hunt{display:none;padding-bottom:80px}
+.bar{position:sticky;top:0;z-index:5;background:rgba(0,0,0,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);margin:0 -28px;padding:14px 28px;display:flex;align-items:center;gap:22px}
+.bar .q{font-size:20px;font-weight:500;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .stats{display:flex;gap:22px;margin-left:auto;color:var(--mute);font-size:13px;white-space:nowrap}
+.bar .stats b{color:var(--fg);font-weight:500;font-family:var(--mono)}
+.live{display:inline-flex;align-items:center;gap:7px}
+.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--win);box-shadow:0 0 0 0 rgba(61,220,132,.6);animation:pulse 1.6s infinite}
+.live.off::before{background:var(--dim);animation:none}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(61,220,132,0)}100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}}
+.ghost{border:1px solid var(--line2);background:none;border-radius:10px;padding:7px 14px;font-size:13px;cursor:pointer;color:var(--mute)}
+.ghost:hover{color:var(--fg)}
+
+/* leaderboard */
+.board{margin:26px 0 22px;display:grid;grid-template-columns:repeat(var(--n),1fr);gap:6px;height:74px;align-items:end}
+.board .col{display:flex;flex-direction:column;justify-content:flex-end;height:100%;position:relative}
+.board .b{border-radius:6px 6px 2px 2px;background:#1a1a1d;height:6%;transition:height .8s cubic-bezier(.2,.8,.2,1),background .4s}
+.board .col.has .b{background:#2c2c31}
+.board .col.best .b{background:var(--win)}
+.board .lab{font-size:11px;color:var(--dim);margin-top:6px;display:flex;justify-content:space-between;gap:4px;white-space:nowrap;overflow:hidden}
+.board .lab b{font-family:var(--mono);font-weight:500;color:var(--mute)}
+.board .col.best .lab b{color:var(--win)}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:820px){.grid{grid-template-columns:repeat(2,1fr)}.board{display:none}}
+@media (max-width:520px){.grid{grid-template-columns:1fr}.wrap{padding:0 16px}.bar{margin:0 -16px;padding:12px 16px;flex-wrap:wrap}.bar .stats{margin-left:0}form{flex-direction:column}}
+.tile{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);display:flex;flex-direction:column;transition:border-color .4s,opacity .6s,transform .6s}
+.tile.best{border-color:var(--win);box-shadow:0 0 0 1px var(--win),0 20px 60px -20px rgba(61,220,132,.35)}
+.tile.dim{opacity:.55}
+.tile .top{display:flex;align-items:center;gap:9px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.tile .top img{width:16px;height:16px;border-radius:3px}
+.tile .top .nm{font-weight:500;font-size:14px}
+.pill{margin-left:auto;font-size:11px;border-radius:99px;padding:2px 9px;border:1px solid var(--line2);color:var(--mute);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.pill.run{color:var(--fg)}
+.pill.run::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--win);animation:blink 1s infinite}
+.pill.found{border-color:transparent;background:var(--win-soft);color:var(--win)}
+.pill.blocked,.pill.missing{color:var(--warn);border-color:rgba(245,165,36,.3)}
+.pill.failed{color:var(--bad);border-color:rgba(239,68,68,.3)}
+@keyframes blink{50%{opacity:.25}}
+.screen{position:relative;aspect-ratio:1/1;background:#060607;overflow:hidden}
+.screen img.s{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;transition:opacity .45s}
+.screen .wait{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--dim);font-size:13px}
+.screen .wait .ring{width:26px;height:26px;border-radius:50%;border:2px solid var(--line2);border-top-color:var(--mute);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scan{position:absolute;left:0;right:0;height:80px;top:-80px;background:linear-gradient(180deg,transparent,rgba(61,220,132,.08),transparent);animation:scan 2.8s linear infinite;pointer-events:none;display:none}
+.tile.running .scan{display:block}
+@keyframes scan{to{top:100%}}
+.cursor{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;pointer-events:none;transition:left .5s cubic-bezier(.3,.7,.2,1),top .5s cubic-bezier(.3,.7,.2,1);display:none}
+.cursor::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--win);box-shadow:0 0 12px var(--win)}
+.cursor.ping::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--win);animation:ping .7s ease-out}
+@keyframes ping{from{transform:scale(.4);opacity:1}to{transform:scale(3.2);opacity:0}}
+.price{position:absolute;left:12px;bottom:12px;right:12px;background:rgba(0,0,0,.86);backdrop-filter:blur(8px);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;transform:translateY(calc(100% + 16px));transition:transform .6s cubic-bezier(.2,.9,.2,1.15)}
+.price.show{transform:none}
+.price .v{font-family:var(--mono);font-size:28px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.price .v s{font-size:14px;color:var(--dim);margin-left:8px}
+.price .t{font-size:12px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.best .price{border-color:var(--win)}
+.tile.best .price .v{color:var(--win)}
+.crown{position:absolute;top:12px;left:12px;background:var(--win);color:#000;font-size:11px;font-weight:600;letter-spacing:.06em;border-radius:6px;padding:4px 8px;display:none}
+.tile.best .crown{display:block}
+.foot{padding:10px 12px 12px;border-top:1px solid var(--line);min-height:76px;display:flex;flex-direction:column;gap:6px}
+.thought{font-size:12.5px;color:var(--mute);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
+.meta{display:flex;gap:10px;font-size:11px;color:var(--dim);font-family:var(--mono);align-items:center}
+.meta a{margin-left:auto;color:var(--dim);text-decoration:none}
+.meta a:hover{color:var(--fg)}
+.act{color:var(--mute)}
+
+/* result */
+#result{display:none;margin-top:34px;border:1px solid var(--line);border-radius:18px;padding:30px;background:var(--panel);gap:40px;grid-template-columns:1.1fr 1fr}
+#result.show{display:grid}
+@media (max-width:820px){#result.show{grid-template-columns:1fr}}
+.r-k{font-size:12px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase}
+.r-price{font-family:var(--mono);font-size:clamp(48px,7vw,84px);font-weight:500;letter-spacing:-.04em;line-height:1;margin-top:10px;color:var(--win)}
+.r-shop{font-size:22px;font-weight:500;margin-top:12px;letter-spacing:-.02em}
+.r-title{color:var(--mute);margin-top:4px;font-size:14px}
+.r-save{margin-top:18px;display:inline-block;background:var(--win-soft);color:var(--win);border-radius:8px;padding:6px 12px;font-size:14px}
+.r-btns{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+.r-btns a{text-decoration:none;border-radius:11px;padding:11px 18px;font-size:14px;font-weight:500}
+.r-btns a.p{background:var(--fg);color:#000}
+.r-btns a.g{border:1px solid var(--line2);color:var(--mute)}
+.rank{list-style:none}
+.rank li{display:grid;grid-template-columns:22px 1fr auto;gap:12px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rank li:last-child{border:0}
+.rank .n{color:var(--dim);font-family:var(--mono);font-size:12px}
+.rank .s small{color:var(--dim);margin-left:8px;font-size:12px}
+.rank .pr{font-family:var(--mono)}
+.rank li.na .pr,.rank li.na .s{color:var(--dim)}
+.rank li:first-child .pr{color:var(--win)}
+.tag{font-size:10.5px;border:1px solid var(--line2);border-radius:5px;padding:1px 5px;color:var(--mute);margin-left:8px;vertical-align:1px}
+.tag.code{font-family:var(--mono);color:var(--win);border-color:rgba(61,220,132,.35)}
+/* round 2 */
+#round2{display:none;margin-top:40px}
+#round2.show{display:block}
+.r2h{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+.r2h h2{font-size:20px;font-weight:500;letter-spacing:-.02em}
+.r2h p{color:var(--mute);font-size:13px}
+.step{font-family:var(--mono);font-size:11px;color:var(--dim);border:1px solid var(--line2);border-radius:6px;padding:2px 7px}
+#grid2{grid-template-columns:repeat(3,1fr)}
+@media (max-width:820px){#grid2{grid-template-columns:1fr}}
+.codes{list-style:none;display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.codes li{display:flex;gap:8px;font-size:12px;color:var(--mute);align-items:baseline}
+.codes code{font-family:var(--mono);font-size:11.5px;color:var(--fg);background:#17171a;border:1px dashed var(--line2);border-radius:5px;padding:1px 6px;white-space:nowrap}
+.codes li.yes code{border-color:var(--win);color:var(--win)}
+.codes li.no{opacity:.5}
+.codes span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy{cursor:pointer;margin-top:18px;display:inline-flex;align-items:center;gap:10px;border:1px dashed var(--win);color:var(--win);border-radius:10px;padding:8px 14px;font-family:var(--mono);font-size:15px;background:none}
+.copy small{font-family:Inter;color:var(--mute);font-size:12px}
+.phase{color:var(--mute);font-size:13px;white-space:nowrap}
+/* link flow */
+.sec{margin-top:34px}
+.sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.sec-h h2{font-size:19px;font-weight:500;letter-spacing:-.02em}
+.sec-h p{color:var(--mute);font-size:13px}
+.row1{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:14px;align-items:stretch}
+@media (max-width:1000px){.row1{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.row1{grid-template-columns:1fr}}
+#grid{grid-template-columns:repeat(4,1fr)}
+.card{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:22px;display:flex;flex-direction:column;gap:14px}
+.card .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.card h3{font-size:19px;font-weight:500;letter-spacing:-.02em;line-height:1.25}
+.card .big{font-family:var(--mono);font-size:40px;font-weight:500;letter-spacing:-.03em;line-height:1}
+.card dl{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:13px}
+.card dt{color:var(--dim)}
+.card dd{color:var(--fg);overflow:hidden;text-overflow:ellipsis}
+.skel{height:12px;border-radius:4px;background:linear-gradient(90deg,#141416,#1d1d21,#141416);background-size:200% 100%;animation:sk 1.4s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+.codes li .r{margin-left:auto;font-family:var(--mono);font-size:11px;white-space:nowrap}
+.codes li.accepted .r{color:var(--win)}
+.codes li.rejected .r{color:var(--bad)}
+.codes li.login_required .r,.codes li.not_tested .r{color:var(--warn)}
+.codes li.accepted code{border-color:var(--win);border-style:solid;color:var(--win)}
+.codes li.rejected code{text-decoration:line-through;color:var(--dim)}
+.why{font-size:11px;color:var(--warn)}
+.verdict-k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.verdict-h{font-size:clamp(26px,3.4vw,40px);font-weight:500;letter-spacing:-.03em;line-height:1.1;margin-top:10px}
+.verdict-h em{font-style:normal;color:var(--win)}
+.rank li.src .s{color:var(--fg)}
+.rank li.src .s::after{content:"your link";font-size:10.5px;border:1px solid var(--line2);border-radius:5px;padding:1px 5px;color:var(--mute);margin-left:8px}
+.toggles{margin-top:22px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toggles .lbl{color:var(--dim);font-size:13px;margin-right:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><i></i>Price Hunter</div>
+    <div class="by">agents by <b>H</b> · Agents API</div>
+  </header>
+
+  <section id="hero">
+    <h1>Paste a product link.<br><span>Agents try the promo codes and hunt for a cheaper price elsewhere.</span></h1>
+    <p class="lead">One agent reads your page. Another finds promo codes for that shop and tries them in the cart. The rest look for the same product, new, at trusted retailers. You watch it all live.</p>
+    <form id="f" autocomplete="off">
+      <label class="field">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+        <input id="q" placeholder="https://www.fnac.com/…/a21500184/w-4" autofocus>
+      </label>
+      <button class="go" id="go">Hunt</button>
+    </form>
+    <div class="examples">try
+      <button class="chip ex" type="button" data-u="https://www.fnac.com/Casque-Arceau-sans-fil-Sony-WH1000XM6-avec-reduction-active-du-bruit-Noir/a21500184/w-4">Sony WH-1000XM6 on Fnac</button>
+    </div>
+    <div class="toggles"><span class="lbl">rules</span>
+      <button class="chip on" type="button" id="t-new">new only</button>
+      <button class="chip on" type="button" id="t-off">sold by the retailer, no marketplace</button>
+    </div>
+  </section>
+
+  <section id="hunt">
+    <div class="bar">
+      <div class="q" id="hq"></div><span class="phase" id="phase"></span>
+      <div class="stats">
+        <span class="live" id="live"><b id="nlive">0</b>&nbsp;live</span>
+        <span>time <b id="clock">0:00</b></span>
+        <span>steps <b id="nsteps">0</b></span>
+        <span>cost <b id="cost">$0.00</b></span>
+      </div>
+      <button class="ghost" id="stop">Stop</button>
+      <button class="ghost" id="again" style="display:none">New link</button>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="step">1</span><h2>Your link</h2><p>one agent reads the page, another tries promo codes in the cart</p></div>
+      <div class="row1" id="row1"><div class="card" id="info"><div class="k">the product</div><div class="skel" style="width:80%"></div><div class="skel" style="width:55%"></div><div class="skel" style="width:35%;height:34px"></div></div></div>
+    </div>
+
+    <div class="sec" id="sec2" style="display:none">
+      <div class="sec-h"><span class="step">2</span><h2>Elsewhere, at trusted retailers</h2><p id="rules"></p></div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="sec" id="sec3" style="display:none">
+      <div class="sec-h"><span class="step">3</span><h2>Promo codes at the cheaper shop</h2><p>the alternative beats your link, so its codes get tried in the cart too</p></div>
+      <div class="grid" id="grid3" style="grid-template-columns:repeat(3,1fr)"></div>
+    </div>
+
+    <div id="result"></div>
+  </section>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const eur = v => v == null ? "–" : Number(v).toLocaleString("en-IE", {style: "currency", currency: "EUR"});
+const host = u => { try { return new URL(u).hostname } catch { return "" } };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const COND = {new: "new", refurbished: "refurbished", used: "used", unknown: "condition unknown"};
+const LABEL = {starting: "starting", queued: "queued", running: "live", found: "found", missing: "ruled out", blocked: "blocked", failed: "failed"};
+const CLABEL = {...LABEL, found: "code works", missing: "no working code"};
+const PLABEL = {...LABEL, found: "read", failed: "unreadable"};
+const RES = {accepted: "accepted", rejected: "rejected", login_required: "login needed", not_tested: "not tried"};
+const ENDED = new Set(["found", "missing", "blocked", "failed"]);
+
+let rules = {new_only: true, official_only: true}, hunt = null, es = null, t0 = 0, timer = null;
+const tiles = {};
+
+// hero
+const tog = (id, key) => $(id).onclick = () => { rules[key] = !rules[key]; $(id).className = "chip " + (rules[key] ? "on" : "off"); };
+tog("#t-new", "new_only"); tog("#t-off", "official_only");
+document.querySelectorAll(".ex").forEach(b => b.onclick = () => { $("#q").value = b.dataset.u; $("#q").focus(); });
+
+$("#f").onsubmit = async e => {
+  e.preventDefault();
+  const url = $("#q").value.trim();
+  if (!url) { $("#q").focus(); return; }
+  $("#go").disabled = true;
+  const r = await fetch("/api/hunt", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({url, ...rules})});
+  $("#go").disabled = false;
+  if (!r.ok) { $(".lead").textContent = (await r.json()).detail; return; }
+  start((await r.json()).id, url);
+};
+
+function start(id, url) {
+  $("#hero").style.display = "none"; $("#hunt").style.display = "block";
+  $("#hq").textContent = host(url);
+  $("#row1").querySelectorAll(".tile").forEach(t => t.remove());
+  for (const el of ["#grid", "#grid3", "#result"]) $(el).innerHTML = "";
+  $("#info").innerHTML = `<div class="k">the product</div><div class="skel" style="width:80%"></div><div class="skel" style="width:55%"></div><div class="skel" style="width:35%;height:34px"></div>`;
+  $("#sec2").style.display = "none"; $("#sec3").style.display = "none"; $("#result").className = "";
+  $("#stop").style.display = ""; $("#again").style.display = "none";
+  for (const k in tiles) delete tiles[k];
+  t0 = Date.now(); clearInterval(timer);
+  timer = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); $("#clock").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` }, 250);
+  history.replaceState(null, "", "#" + id);
+  es = new EventSource(`/api/hunt/${id}/stream`);
+  es.onmessage = m => render(JSON.parse(m.data));
+  es.addEventListener("end", () => { es.close(); finish(); });
+  hunt = {id};
+}
+
+// ------------------------------------------------------------ tiles
+
+function makeTile(id, s, parent, sub, before) {
+  const el = document.createElement("div");
+  el.className = "tile";
+  el.innerHTML = `
+    <div class="top"><img alt=""><span class="nm"></span>${sub ? `<span style="color:var(--dim);font-size:13px">· ${sub}</span>` : ""}<span class="pill">starting</span></div>
+    <div class="screen">
+      <div class="wait"><div class="ring"></div><span>starting the browser</span></div>
+      <img class="s a" alt=""><img class="s b" alt="" style="opacity:0">
+      <div class="scan"></div><div class="cursor"></div><div class="crown">CHEAPEST</div>
+      <div class="price"><div class="v"></div><div class="t"></div></div>
+    </div>
+    <div class="foot"><div class="thought"></div><ul class="codes"></ul><div class="meta"><span class="steps">0 steps</span><span class="act"></span><a target="_blank" rel="noopener" class="watch" style="display:none">replay ↗</a></div></div>`;
+  before ? parent.insertBefore(el, before) : parent.append(el);
+  return tiles[id] = {el, v: 0, front: "a", cur: null};
+}
+
+function paint(h, id, bucket, key, s, labels, parent, sub, before) {
+  const t = tiles[id] || makeTile(id, s, parent, sub, before), el = t.el;
+  el.querySelector(".nm").textContent = s.name;
+  const fav = host(s.site);
+  const img0 = el.querySelector(".top img");
+  if (fav && img0.dataset.h !== fav) { img0.dataset.h = fav; img0.src = `https://www.google.com/s2/favicons?sz=64&domain=${fav}`; }
+  el.classList.toggle("running", s.status === "running");
+  const pill = el.querySelector(".pill");
+  pill.className = "pill " + ({running: "run"}[s.status] || s.status);
+  pill.textContent = labels[s.status] || s.status;
+
+  const wait = el.querySelector(".wait");
+  if (s.shot_v > t.v) {
+    t.v = s.shot_v;
+    const next = t.front === "a" ? "b" : "a";
+    const img = el.querySelector("img.s." + next), old = el.querySelector("img.s." + t.front);
+    img.onload = () => { img.style.opacity = 1; old.style.opacity = 0; wait.style.display = "none"; };
+    img.src = `/api/hunt/${h.id}/${bucket}/${key}/shot?v=${s.shot_v}`;
+    t.front = next;
+  } else if (!s.shot_v) {
+    wait.querySelector("span").textContent = s.status === "queued" ? "queued · waiting for a free agent" : s.status === "failed" ? "not started" : "starting the browser";
+    wait.querySelector(".ring").style.display = ENDED.has(s.status) ? "none" : "";
+  }
+
+  const c = el.querySelector(".cursor");
+  if (s.cursor && s.status === "running") {
+    const k = s.cursor.join();
+    if (k !== t.cur) {
+      t.cur = k;
+      c.style.display = "block"; c.style.left = s.cursor[0] * 100 + "%"; c.style.top = s.cursor[1] * 100 + "%";
+      c.classList.remove("ping"); void c.offsetWidth; c.classList.add("ping");
+    }
+  } else c.style.display = "none";
+
+  const a = s.answer || {};
+  const txt = ENDED.has(s.status) ? (a.note || s.thought || (s.status === "blocked" ? "The site blocked the agent (captcha)." : "")) : s.thought || (s.status === "queued" ? "All agents are busy, it starts as soon as one is free." : "");
+  const th = el.querySelector(".thought");
+  if (th.textContent !== txt) th.textContent = txt;
+  el.querySelector(".steps").textContent = `${s.steps || 0} step${s.steps === 1 ? "" : "s"}`;
+  el.querySelector(".act").textContent = s.status === "running" && s.action ? "→ " + s.action.replace("_web", "") : "";
+  if (s.watch) { const w = el.querySelector(".watch"); w.href = s.watch; w.style.display = ""; }
+  return t;
+}
+
+function showPrice(el, v, t) {
+  const pr = el.querySelector(".price");
+  pr.querySelector(".v").innerHTML = v; pr.querySelector(".t").textContent = t; pr.classList.add("show");
+}
+
+function paintCodes(el, s, base) {
+  const a = s.answer || {};
+  el.querySelector(".codes").innerHTML = (a.codes || []).slice(0, 4).map(x =>
+    `<li class="${esc(x.result)}"><code>${esc(x.code)}</code><span title="${esc(x.message)}">${esc(x.label)}</span><span class="r">${RES[x.result] || ""}${x.result === "accepted" && x.total_after != null ? " " + eur(x.total_after) : ""}</span></li>`).join("");
+  if (ENDED.has(s.status) && s.status !== "failed") {
+    if (s.best) showPrice(el, `${eur(s.best.price)}<s>${eur(base)}</s>`, `code ${s.best.code} accepted in the cart · ${eur(s.best.saving)} off`);
+    else showPrice(el, `<span style="font-size:18px;color:var(--mute)">no code works</span>`, (a.codes || []).length ? `${a.codes.length} tried, still ${eur(base)}` : `nothing usable on Dealabs · still ${eur(base)}`);
+  }
+}
+
+// ------------------------------------------------------------ prices
+
+function deals(h) {
+  // every offer we could buy, with tested codes applied
+  const ref = h.product.answer || {}, out = [];
+  if (h.product.status === "found") {
+    const cs = h.coupons.source || {};
+    out.push({key: "source", name: h.product.name, base: ref.price, price: cs.best ? cs.best.price : ref.price, code: cs.best && cs.best.code, url: h.url, watch: h.product.watch, cwatch: cs.watch, cond: ref.condition, seller: ref.seller, src: true});
+  }
+  for (const [k, s] of Object.entries(h.offers)) {
+    if (s.status !== "found") continue;
+    const a = s.answer, ca = h.coupons.alt && h.coupons.alt.for === k ? h.coupons.alt : null;
+    out.push({key: k, name: s.name, base: a.price, price: ca && ca.best ? ca.best.price : a.price, code: ca && ca.best && ca.best.code, url: a.url, watch: s.watch, cwatch: ca && ca.watch, cond: a.condition, seller: a.seller, delivery: a.delivery});
+  }
+  return out.sort((a, b) => a.price - b.price || (a.src ? -1 : 1));
+}
+
+function render(h) {
+  hunt = h;
+  const ref = h.product.answer || {};
+  let live = 0, steps = 0, cost = 0;
+  for (const s of [h.product, ...Object.values(h.offers), ...Object.values(h.coupons)]) { if (s.status === "running") live++; steps += s.steps || 0; cost += s.cost || 0; }
+  const ds = deals(h), best = ds.length ? ds[0].key : null;
+
+  // row 1: product + its codes
+  const info = $("#info");
+  const pt = paint(h, "product", "product", "x", h.product, PLABEL, $("#row1"), "your page", info);
+  if (h.product.status === "found") {
+    $("#hq").textContent = ref.title || host(h.url);
+    showPrice(pt.el, eur(ref.price), [COND[ref.condition], ref.in_stock === false ? "out of stock" : "in stock", ref.seller].filter(Boolean).join(" · "));
+    if (!info.dataset.done) {
+      info.dataset.done = 1;
+      info.innerHTML = `<div class="k">the product · ${esc(h.product.name)}</div><h3>${esc(ref.title)}</h3>
+        <div class="big">${eur(ref.price)}</div>
+        <dl><dt>brand</dt><dd>${esc(ref.brand)}</dd><dt>model</dt><dd>${esc(ref.model)}</dd><dt>variant</dt><dd>${esc(ref.variant)}</dd>
+        ${ref.ean ? `<dt>EAN</dt><dd style="font-family:var(--mono)">${esc(ref.ean)}</dd>` : ""}
+        <dt>condition</dt><dd>${COND[ref.condition] || ""}</dd><dt>seller</dt><dd>${esc(ref.seller)}</dd></dl>`;
+    }
+  } else if (ENDED.has(h.product.status)) {
+    info.innerHTML = `<div class="k">the product</div><h3>Could not read this page.</h3><p style="color:var(--mute);font-size:14px">${esc(ref.note || "Check that it is a product page and that the site does not block bots.")}</p>`;
+  }
+  if (h.coupons.source) {
+    const ct = paint(h, "c:source", "coupons", "source", h.coupons.source, CLABEL, $("#row1"), "promo codes", info);
+    paintCodes(ct.el, h.coupons.source, ref.price);
+    ct.el.classList.toggle("best", best === "source" && !!h.coupons.source.best);
+  }
+
+  // row 2: trusted alternatives
+  const offers = Object.entries(h.offers);
+  if (offers.length) {
+    $("#sec2").style.display = "";
+    $("#rules").textContent = [h.new_only && "new only", h.official_only && "sold and shipped by the retailer", "same variant"].filter(Boolean).join(" · ");
+  }
+  for (const [k, s] of offers) {
+    const t = paint(h, "o:" + k, "offers", k, s, LABEL, $("#grid"), "", null), a = s.answer || {};
+    if (s.status === "found") {
+      const d = ds.find(x => x.key === k);
+      showPrice(t.el, eur(d.price) + (d.price < d.base ? `<s>${eur(d.base)}</s>` : ""), [d.code && "code " + d.code, COND[a.condition], a.seller].filter(Boolean).join(" · "));
+    } else if (s.status === "missing" && s.rejected && a.price) {
+      showPrice(t.el, `<span style="color:var(--dim)">${eur(a.price)}</span>`, "ruled out: " + s.rejected + (a.seller ? " · " + a.seller : ""));
+    }
+    t.el.classList.toggle("best", k === best);
+  }
+
+  // row 3: codes at the cheaper alternative
+  if (h.coupons.alt) {
+    $("#sec3").style.display = "";
+    const k = h.coupons.alt.for, ct = paint(h, "c:alt", "coupons", "alt", h.coupons.alt, CLABEL, $("#grid3"), "promo codes", null);
+    paintCodes(ct.el, h.coupons.alt, h.offers[k].answer.price);
+  }
+
+  $("#phase").textContent = {read: "· reading the link", hunt: "· codes + alternatives", alt_codes: "· codes at the cheaper shop"}[h.phase] || "";
+  $("#nlive").textContent = live;
+  $("#live").classList.toggle("off", !live);
+  $("#nsteps").textContent = steps;
+  $("#cost").textContent = "$" + cost.toFixed(2);
+}
+
+// ------------------------------------------------------------ verdict
+
+function finish() {
+  clearInterval(timer);
+  $("#stop").style.display = "none"; $("#again").style.display = "";
+  $("#live").classList.add("off"); $("#phase").textContent = "";
+  const h = hunt, ds = deals(h), r = $("#result");
+  if (!ds.length) { r.innerHTML = `<div><div class="verdict-k">result</div><div class="verdict-h">Nothing to compare.</div><div class="r-title">The agent could not read your link. Try the direct product page.</div></div>`; r.className = "show"; return; }
+  // switching shops for a few cents isn't worth it: under 1% the link stays the answer
+  let w = ds[0];
+  const src = ds.find(d => d.src);
+  const close = src && !w.src && src.price - w.price < Math.max(2, src.price * 0.01);
+  if (close) w = src;
+  document.querySelectorAll("#grid .tile").forEach(t => t.classList.toggle("dim", !t.classList.contains("best")));
+  const head = w.src
+    ? (w.code ? `Keep your link, <em>with code ${esc(w.code)}</em>.` : `Your link is already the best safe price.`)
+    : `Buy it at <em>${esc(w.name)}</em> instead${w.code ? `, with code ${esc(w.code)}` : ""}.`;
+  const sub = close ? `<div class="r-title" style="margin-top:8px">${esc(ds[0].name)} is at ${eur(ds[0].price)}, only ${eur(src.price - ds[0].price)} less: not worth switching.</div>` : "";
+  const gain = src && src.base - w.price;
+  const rejected = Object.values(h.offers).filter(s => s.status !== "found");
+  r.innerHTML = `
+    <div>
+      <div class="verdict-k">verdict</div>
+      <div class="verdict-h">${close ? "Your link is at the right price." : head}</div>${sub}
+      <div class="r-price">${eur(w.price)}</div>
+      <div class="r-title">${[COND[w.cond], w.seller && "sold by " + w.seller, w.delivery].filter(Boolean).map(esc).join(" · ")}</div>
+      ${w.code ? `<button class="copy" onclick="navigator.clipboard.writeText(this.dataset.c);this.querySelector('small').textContent='copied'" data-c="${esc(w.code)}">${esc(w.code)} <small>copy · tested in the cart</small></button><br>` : ""}
+      ${gain > 0.5 ? `<div class="r-save">${eur(gain)} less than your link</div>` : ""}
+      <div class="r-btns">
+        ${w.url ? `<a class="p" href="${esc(w.url)}" target="_blank" rel="noopener">See the offer ↗</a>` : ""}
+        ${w.watch ? `<a class="g" href="${w.watch}" target="_blank" rel="noopener">Replay ↗</a>` : ""}
+        ${w.cwatch ? `<a class="g" href="${w.cwatch}" target="_blank" rel="noopener">Replay of the code test ↗</a>` : ""}
+      </div>
+    </div>
+    <ol class="rank">
+      ${ds.map((d, i) => `<li class="${d.src ? "src" : ""}"><span class="n">${i + 1}</span><span class="s">${esc(d.name)}${d.code ? `<span class="tag code">${esc(d.code)}</span>` : ""}</span><span class="pr"><a href="${esc(d.url || "#")}" target="_blank" rel="noopener" style="text-decoration:none">${eur(d.price)}</a></span></li>`).join("")}
+      ${rejected.map(s => `<li class="na"><span class="n">–</span><span class="s">${esc(s.name)}${s.answer && s.answer.price && s.rejected ? `<small>${eur(s.answer.price)}</small>` : ""}</span><span class="pr">${esc(s.rejected || LABEL[s.status])}</span></li>`).join("")}
+    </ol>`;
+  r.className = "show";
+  setTimeout(() => r.scrollIntoView({behavior: "smooth", block: "center"}), 400);
+}
+
+// a reload or a shared link reattaches to the hunt in progress
+if (/^#[0-9a-f]{10}$/.test(location.hash)) start(location.hash.slice(1), "");
+
+$("#stop").onclick = () => hunt && fetch(`/api/hunt/${hunt.id}/stop`, {method: "POST"});
+$("#again").onclick = () => { history.replaceState(null, "", "/"); $("#hunt").style.display = "none"; $("#hero").style.display = ""; $("#q").select(); };
+
+</script>
+</body>
+</html>
